@@ -340,6 +340,8 @@ SR_winter2<-SR_winter2[,c(2,7,8,10),drop=F]
 colnames(SR_winter2)<-c("year","cover","SrSum","temperature")
 SR_winter2$year<-as.factor(SR_winter2$year)
 SR_winter2$canopy<-SR_size$`Canopy area`
+
+
 q<-ggplot(data=SR_winter2,aes(x=canopy,y=SrSum, color=year)) + 
   Tema + theme(legend.position = "none",axis.title.y=element_blank(),axis.text.x = element_text(size=24)) +
   geom_point() + 
@@ -351,6 +353,7 @@ q<-ggplot(data=SR_winter2,aes(x=canopy,y=SrSum, color=year)) +
   annotate('text', x = 105, y = 0.1, label="r = -0.02",size = 10, color = "black") +
   scale_y_continuous(limits=c(0,0.2))
 q
+
 
 cor.test(SR_winter2$canopy,SR_winter2$SrSum)  
 
@@ -394,7 +397,8 @@ pp<-ggplot(data = SR_SH_2018, aes(x = SH, y = SR)) +
                axis.text.y = element_blank())
 pp
   
-r<-ggarrange(o,oo,p,q,qq,pp, nrow=2, ncol=3, align="hv", common.legend=TRUE,legend="none",
+r<-ggarrange(o,oo,p,q,qq,pp, nrow=2, ncol=3, 
+             align="hv", common.legend=TRUE,legend="none",
              font.label = list(size = 22, face = "bold"),labels = c("A)","B)","C)","D)", "E)", "F)"),
              hjust=c(-2.5,-2.5,-2.5,-2.5))
 r

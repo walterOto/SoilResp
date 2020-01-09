@@ -10,19 +10,17 @@ library(dplyr)    # to summarise the data x
 library(forcats)  # fct_recode to change level names of a factor
 library(ggplot2)  # to visualize the data
 library(ggpubr)   # ggarrange()
-library(ggthemes) # to add some aesthetics to the ggplots
-library(rmcorr)   ## for repetead measurement correlation 
 
 # Data --------------------------------------------------------------------------------------------
 Rs_piura <- read.csv("./Data/Data_v2/Rs_Piura_2017&2018.csv") # piura data
 Rs_glob  <- read.csv("./Data/Data_v2/soil_resp_global.csv") # global data
-Soil_Hum <- read.csv("./Data/Data_v2/Hum_slo.csv") # Need to change the name of this object and file
+Soil_Hum <- read.csv("./Data/Data_v2/Hum_slo.csv") 
 Das_dat  <- read.csv("./Data/Data_v2/Dasometric_data.csv")
 
 # summary dataframe for 2017 data
 Rs_piura17 <- Rs_piura %>%
   filter(Year == "2017") %>%
-  group_by(Season,Coverage) %>%
+  group_by(Season, Coverage) %>%
   summarise(N = n(), 
             Rs_mean = mean(Soil_resp, na.rm = TRUE),
             sd = sd(Soil_resp, na.rm = T)) %>% 
@@ -31,7 +29,7 @@ Rs_piura17 <- Rs_piura %>%
 # summary dataframe for 2018 data
 Rs_piura18 <- Rs_piura %>%
   filter(Year == "2018") %>%
-  group_by(Season,Coverage) %>%
+  group_by(Season, Coverage) %>%
   summarise(N = n(), 
             Rs_mean = mean(Soil_resp, na.rm = TRUE),
             sd = sd(Soil_resp, na.rm = T)) %>% 
@@ -69,8 +67,7 @@ Rs_piura17_plot <- ggplot(Rs_piura17, aes(x = Season, y = Rs_mean, fill = Covera
 # Plot of Soil Respiration of 2018 data
 Rs_piura18_plot <- ggplot(Rs_piura18, aes(x = Season, y = Rs_mean, fill = Coverage)) +
   geom_errorbar(aes(ymin = Rs_mean - se, ymax = Rs_mean + se),
-                width = 0.2,
-                position = position_dodge(0.7)) +
+                width = 0.2, position = position_dodge(0.7)) +
   geom_bar(width = 0.65, position = position_dodge(), stat = "identity") +
   scale_fill_manual(values = c("Outside canopy" = "#D2B48C", "Under canopy" = "#008B45")) +
   scale_y_continuous(expand = c(0,0), limits = c(0,1), position = "right") +
@@ -81,7 +78,11 @@ Rs_piura18_plot <- ggplot(Rs_piura18, aes(x = Season, y = Rs_mean, fill = Covera
         legend.title = element_blank())
 
 # grid of 2017 and 2018 soil respiration summary plots
-Rs_piura_plot <- ggarrange(Rs_piura17_plot, Rs_piura18_plot,common.legend = TRUE, legend = "top")
+Rs_piura_plot <- ggarrange(Rs_piura17_plot, Rs_piura18_plot,
+                           common.legend = TRUE, legend = "top")
+tiff("./Outputs/Outputs2/1)Rs outside and under canopy in summer and winter.tiff", width = 12, height = 4.5, units = "in", res = 300, compression = "lzw")
+Rs_piura_plot
+dev.off()
 
 # Global soil respiration analysis  ----------------------------------------------------------------------
 
@@ -161,20 +162,20 @@ Rs_winter_plot <- ggplot(data = Rs_piura_glob_winter, aes(x = Temp, y = Rs)) +
         axis.text.y = element_blank(), # No numbers on y axis
         legend.position = "bottom")
 
+# Grid of 2017 and 2018 Piura and Global data temperature and soil respiration
 Rs_piura_global_plot <- ggarrange(Rs_summer_plot, Rs_winter_plot, 
                                   align = "v", common.legend = TRUE, hjust = c(-1.5,-1.5),
                                   font.label = list(size = 22, face = "bold"), 
                                   labels = c("A)","B)"), legend = "bottom")
 
-
-# setwd("/Users/RStudio/Documents/Dropbox/SoilResp/Outputs/Outputs2/")
-tiff("Global_winter.tiff", width = 12, height = 4.5, units = 'in', res = 300, compression = 'lzw')
-annotate_figure(arrange1,
+tiff("./Outputs/Outputs2/2)Rs in summer and winter.tiff", 
+     width = 12, height = 4.5, units = 'in', res = 300, compression = 'lzw')
+annotate_figure(Rs_piura_global_plot,
                 left = text_grob(expression(paste(Rs~group("(",mu~molCO[2]~m^-2~s^-1,")"))), 
                                  size = 24, rot = 90))
 dev.off()
 
-# Soil respiration with Soil Humidity analysis -----------------------------------------------------
+# Pearon correlation analysis between soil respiration with canopy area, soil temperature and soil humidity ----------------
 # Summary tables of soil respiration by sample points
 Rs_piura17_SP <- Rs_piura %>%
   filter(Year == "2017") %>%
@@ -213,12 +214,12 @@ Soil_Hum18 <- Soil_Hum %>%
 Rs_SH_17 <- merge(Rs_piura17_SP, Soil_Hum17)
 Rs_SH_18 <- merge(Rs_piura18_SP, Soil_Hum18)
 
-# # Correlation with canopy area ------------------------------------------------------------------------------------
-Rs_piura_summer2_17 <- Rs_piura %>%
+# Piura soil respiration values with canopy area and soil temperature 
+Rs_piura_2_17 <- Rs_piura %>%
   select(Year,
          Coverage,
          Rs = Soil_resp,
-         Soil_temp) %>%
+         SoilTemp = Soil_temp) %>%
   filter(Year == "2017", Coverage == "Under canopy") %>%
   mutate(Year = as.factor(Year),
          ID = rep(1:20, times = 10),
@@ -228,26 +229,15 @@ Rs_piura_2_18 <- Rs_piura %>%
   select(Year,
          Coverage,
          Rs = Soil_resp,
-         Soil_temp) %>%
+         SoilTemp = Soil_temp) %>%
   filter(Year == "2018", Coverage == "Under canopy") %>%
   mutate(Year = as.factor(Year),
          ID = rep(1:20, times = 10),
-         CanopyArea = rep(Das_dat$CanopyArea, times = 10))
+         CanopyArea = rep(Das_dat$CanopyArea, times = 10)) %>% 
+  na.omit()
 
-
-# ggplot(data = Rs_piura_summer2, aes(x = CanopyArea, y = Rs)) +
-#   geom_point(aes(color = Year)) +
-#   geom_smooth(aes(x = CanopyArea, y = Rs), method = lm, se = FALSE) +
-#   labs(x = expression(paste("Canopy area (",m^2,")")),
-#        y = expression(paste("Soil respiration rate (",~mu~molCO[2]~m^-2~s^-1,")"))) +
-#   custom_theme +
-#   theme(legend.position = "none")
-# 
-# cor.test(Rs_piura_summer2, )
-
-# Pearon correlation analysis between soil respiration and tree canopy area
-# 2017
-ggplot(data = Rs_piura_summer2_17, aes(x = CanopyArea, y = Rs)) +
+# Soil respiration and soil humidity correlation in 2017
+Canopy_Rs_17_plot <- ggplot(data = Rs_piura_2_17, aes(x = CanopyArea, y = Rs)) +
   geom_point(aes(color = Year), colour = "#0000ff") +
   geom_smooth(aes(x = CanopyArea, y = Rs), method = lm, se = FALSE) +
   scale_color_manual(values = "#0000ff") +
@@ -255,54 +245,76 @@ ggplot(data = Rs_piura_summer2_17, aes(x = CanopyArea, y = Rs)) +
   labs(x = expression(paste("Canopy area (", m^2, ")")),
        y = expression(paste("Soil respiration rate (",~mu~molCO[2]~m^-2~s^-1,")"))) +
   custom_theme +
-  theme(legend.position = "none") +
+  theme(legend.position = "none", axis.title = element_blank()) +
   annotate('text', label = "r = 0.17*", x = 108, y = 1, size = 10)
-  
-ggplot(data = Rs_piura_summer2_17, aes(x = Soil_temp, y = Rs)) +
+
+# Soil respiration and soil temperature correlation in 2017  
+SoilTemp_Rs_17_plot <- ggplot(data = Rs_piura_2_17, aes(x = SoilTemp, y = Rs)) +
   geom_point(aes(color = Year), colour = "#0000ff") +
-  geom_smooth(aes(x = Soil_temp, y = Rs), method = lm, se = FALSE) +
+  geom_smooth(aes(x = SoilTemp, y = Rs), method = lm, se = FALSE, colour = "#0000ff") +
   scale_color_manual(values = "#0000ff") +
   scale_y_continuous(limits = c(0,2.5)) +
   labs(x = "Soil temperature (C)",
        y = expression(paste("Soil respiration rate (",~mu~molCO[2]~m^-2~s^-1,")"))) +
   custom_theme +
-  theme(legend.position = "none") +
+  theme(legend.position = "none", axis.title = element_blank()) +
   annotate('text', label = "r = 0.43***", x = 30, y = 1.5, size = 10)
 
-ggplot(data = Rs_SH_17, aes(x = SoilHum, y = Rs_mean)) +
+# Soil respiration and soil humidity correlation in 2018
+SoilHum_Rs_17_plot <- ggplot(data = Rs_SH_17, aes(x = SoilHum, y = Rs_mean)) +
   geom_point(aes(color = Year), colour = "#0000ff") +
-  geom_smooth(aes(x = SoilHum, y = Rs_mean), method = lm, se = FALSE) +
-  scale_color_manual(values = "#0000ff") +
+  geom_smooth(aes(x = SoilHum, y = Rs_mean), method = lm, se = FALSE, colour = "#0000ff") +
   scale_y_continuous(limits = c(0,2.5)) +
   labs(x = "Soil humidity (%)",
        y = expression(paste("Soil respiration rate (",~mu~molCO[2]~m^-2~s^-1,")"))) +
   custom_theme +
-  theme(legend.position = "none") +
+  theme(legend.position = "none", axis.title = element_blank()) +
   annotate('text', label = "r = 0.68***", x = 2.2, y = 1.5, size = 10)
 
-# 2018
-ggplot(data = Rs_piura_2_18, aes(x = CanopyArea, y = Rs)) +
+# Soil respiration and canopy area correlation in 2018
+Canopy_Rs_18_plot <- ggplot(data = Rs_piura_2_18, aes(x = CanopyArea, y = Rs)) +
   geom_point(aes(color = Year), colour = "#ff0000") +
-  geom_smooth(aes(x = CanopyArea, y = Rs), method = lm, se = FALSE) +
-  scale_color_manual(values = "#ff0000") +
-  scale_y_continuous(limits = c(0,0.2))
+  geom_smooth(aes(x = CanopyArea, y = Rs), method = lm, se = FALSE, colour = "#ff0000") +
+  scale_y_continuous(limits = c(0,0.2)) +
+  labs(x = expression(paste("Canopy area (", m^2, ")")),
+       y = expression(paste("Soil respiration rate (",~mu~molCO[2]~m^-2~s^-1,")"))) +
+  custom_theme +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  annotate('text', label = "r = -0.02", x = 105, y = 0.1, size = 10)
 
+# Soil respiration and soil temperature correlation in 2018
+SoilTemp_Rs_18_plot <- ggplot(data = Rs_piura_2_18, aes(x = SoilTemp, y = Rs)) +
+  geom_point(aes(color = Year), colour = "#ff0000") +
+  geom_smooth(aes(x = SoilTemp, y = Rs), method = lm, se = FALSE, colour = "#ff0000") +
+  scale_y_continuous(limits = c(0,0.2)) +
+  labs(x = "Soil temperature (C)",
+       y = expression(paste("Soil respiration rate (",~mu~molCO[2]~m^-2~s^-1,")"))) +
+  custom_theme +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  annotate('text', label = "r = -0.2**", x = 37, y = 0.1, size = 10)
 
+# Soil respiration and soil humidity correlation in 2018
+SoilHum_Rs_18_plot <- ggplot(data = Rs_SH_18, aes(x = SoilHum, y = Rs_mean)) +
+  geom_point(aes(color = Year), colour = "#ff0000") +
+  geom_smooth(aes(x = SoilHum, y = Rs_mean), method = lm, se = FALSE, colour = "#ff0000") +
+  scale_y_continuous(limits = c(0,0.2)) +
+  labs(x = "Soil humidity (%)",
+       y = expression(paste("Soil respiration rate (",~mu~molCO[2]~m^-2~s^-1,")"))) +
+  custom_theme +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  annotate('text', label = "r = 0.004", x = 1.1, y = 0.05, size = 10)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# grid of plots to visualize the correlation between Rs and canopy area, soil temperature and soil humidity
+Rs_cor <- ggarrange(Canopy_Rs_17_plot, SoilTemp_Rs_17_plot, SoilHum_Rs_17_plot,
+                    Canopy_Rs_18_plot, SoilTemp_Rs_18_plot, SoilHum_Rs_18_plot,
+                    font.label = list(size = 22, face = "bold"),
+                    align = "v", labels = c("A)","B)","C)","D)","E)","F)"),
+                    hjust = c(-2.5,-2.5,-2.5,-2.5))
+tiff("./Outputs/Outputs2/3)Rs correlation with canopy area, soil temperature and soil humidity.tiff", 
+     width = 18, height = 9, units = "in", res = 300, compression = "lzw")
+annotate_figure(Rs_cor, 
+                left = text_grob(expression(paste(~~~~~~~~"Rs (",~mu~molCO[2]~m^-2~s^-1,")"~~~~~~~~"Rs (",~mu~molCO[2]~m^-2~s^-1,")")),
+                                         size = 24, rot = 90),
+                right = text_grob(expression("2017                                       2018      "),
+                                  size=24,rot =-90))
+dev.off()
